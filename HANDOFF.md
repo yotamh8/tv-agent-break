@@ -1,7 +1,11 @@
 # TV agent: handoff notes
 
 Context from a first research session, so work can continue in Claude Code on the owner's
-Windows PC, which is on the same home network as the TV.
+Windows PC, which is on the same home network as the TVs.
+
+The owner has two TVs:
+- a **Hisense 32A4BG** on VIDAA (everything up to "Ground rules" below)
+- a **Rowa Google TV** (see [Second TV: Rowa Google TV](#second-tv-rowa-google-tv) at the end)
 
 ## The goal
 
@@ -103,3 +107,75 @@ makes it easier to follow online guides.
 - Don't downgrade or flash firmware, and don't use factory or service menus.
 - Never expose port 36669 (or anything on the TV) to the internet.
 - Keep the TV's identifiers and any pairing secrets out of the repo.
+
+---
+
+## Second TV: Rowa Google TV
+
+The owner bought a **Rowa** TV running **Google TV**. Unlike the Hisense, this one is Android, so
+the **cleanyourtv** repo applies directly: https://github.com/Gathin23/cleanyourtv
+
+| | |
+|---|---|
+| Brand | Rowa (sold in Israel) |
+| OS | Google TV (Android TV) |
+| Model | **Not known yet.** Ask the owner (sticker on the back, or Settings → System → About) |
+| Android TV OS version | **Not known yet.** Same About screen |
+| Tested list in cleanyourtv | **None.** No `examples/` folder mentions Rowa as of 2026-10-30. Rowa may build on another maker's board (TCL, Skyworth and others), so compare its packages with the closest lists in `examples/`. |
+
+### What the owner wants (so far)
+
+1. Debloat it **safely**: disable ads, tracking and preinstalled junk, with a full restore.
+2. Maybe the clean cleanyourtv launcher (optional. Keeping the stock Google TV home is fine.)
+3. Install other apps on it (see below).
+4. Possibly the same agentic-remote idea as the Hisense, which is easier here because ADB gives full
+   control: keys, launching apps, deep links, screenshots.
+
+### Why it's safe, and how it's undone
+
+- **Debug mode = Developer options.** Settings → System → About → press OK on
+  **Android TV OS build** 7 times → back → Developer options → **USB debugging** on (and
+  network/wireless debugging if shown). Accept "Allow USB debugging?" on the TV once.
+- cleanyourtv only uses `pm disable-user`. It **never** uninstalls, roots or bypasses anything,
+  and its tools refuse Android core packages.
+- `tools/disable.sh` (`tools/disable.ps1` on Windows) **records the starting state first** in
+  `~/.cleanyourtv/` on the PC: which packages were enabled, which component owned Home, and the
+  animation scales.
+- Restore on Windows:
+  `powershell -ExecutionPolicy Bypass -File tools\restore.ps1 -TvHost <TV_IP> <list> -Stock com.google.android.apps.tv.launcherx`
+- Fallbacks: re-enable apps under the TV's Settings → Apps; a **factory reset** restores everything
+  too (disabled apps are still installed).
+
+### How to do it
+
+1. Clone cleanyourtv on the PC (`git clone https://github.com/Gathin23/cleanyourtv`), open it in
+   Claude Code, paste its `PROMPT.md` and fill in the Rowa model. Use the repo's scripts, not
+   hand-written ones. That's where the backup, the Home guard and the restore record live.
+2. The launcher build needs a JDK 17–22 and Android SDK platform 34 + build-tools 34. The
+   debloat alone needs only `adb` (Android platform-tools) and Python 3.
+3. Answer the checklist: apps in use, the dock, and whether to keep the voice assistant,
+   Chromecast and updates.
+
+### Don't
+
+- Don't disable the keyboard, the input/HDMI packages, the only Home app, or `setupwraith`
+  (casting stops without it on Google TV, and it can own the saved Wi-Fi). Let
+  `launcher/build-and-install.sh` do the Home handover.
+- Don't leave USB/network debugging on afterwards. Anyone on the Wi-Fi could try to connect.
+- After a firmware update some bloat may come back. Re-run the same list
+  (see cleanyourtv `docs/firmware-updates.md`).
+
+### Installing other apps (it's Android, so yes)
+
+1. **Google Play Store** on the TV. The normal route. Only TV-compatible apps show up.
+2. **Sideload an APK from the PC over ADB:** with debugging on, `adb connect <TV_IP>` then
+   `adb install app.apk`. Use an APK built for Android TV (or at least one that works with a
+   remote, since phone apps often need touch), and match the TV's CPU (usually `armeabi-v7a`
+   or `arm64-v8a`; `adb shell getprop ro.product.cpu.abi` tells you).
+3. **On the TV itself:** install a downloader app from the Play Store, then allow it under
+   Settings → Apps → Security & restrictions → **Unknown sources** (turn this back off afterwards).
+
+Safety: only take APKs from the developer's own site, GitHub releases or F-Droid. Avoid "modded"
+or cracked APK sites, which are a common source of malware. Leave Google Play Protect on.
+Sideloaded apps sometimes don't appear on the stock Google TV home. Open them from
+Apps → "See all", or from the cleanyourtv launcher's grid, which lists every launchable app.
